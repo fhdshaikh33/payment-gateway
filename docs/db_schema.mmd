@@ -1,0 +1,105 @@
+erDiagram
+    USERS ||--o{ MERCHANT_MEMBERS : "belongs_to"
+    USERS ||--o{ ADMIN_PROFILES : "has_if_internal"
+    
+    MERCHANTS ||--o{ MERCHANT_MEMBERS : "has_team"
+    MERCHANTS ||--o{ API_KEYS : "has"
+    MERCHANTS ||--o{ ORDERS : "initiates"
+    MERCHANTS ||--o{ PAYMENTS : "receives"
+    MERCHANTS ||--o{ ACCOUNTS : "owns_wallet"
+
+    ROLES ||--o{ MERCHANT_MEMBERS : "assigned_to"
+    ROLES ||--o{ ROLE_PERMISSIONS : "contains"
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : "granted_in"
+
+    ORDERS ||--o{ PAYMENTS : "contains_attempts"
+    ACCOUNTS ||--o{ LEDGER_ENTRIES : "records"
+    LEDGER_TRANSACTIONS ||--|{ LEDGER_ENTRIES : "composed_of"
+
+    USERS {
+        UUID id PK
+        VARCHAR full_name
+        VARCHAR email UK
+        VARCHAR password_hash
+        BOOLEAN is_platform_admin "True for Gateway Staff"
+        BOOLEAN is_active
+        TIMESTAMPTZ created_at
+    }
+
+    ADMIN_PROFILES {
+        UUID id PK
+        UUID user_id FK, UK
+        VARCHAR role "SUPER_ADMIN, RISK_ANALYST, COMPLIANCE_OFFICER"
+        JSONB platform_privileges
+        TIMESTAMPTZ created_at
+    }
+
+    MERCHANTS {
+        UUID id PK
+        VARCHAR business_name
+        VARCHAR legal_entity_type "INDIVIDUAL, PVT_LTD, LLP"
+        VARCHAR kyc_status "PENDING, APPROVED, REJECTED"
+        TIMESTAMPTZ created_at
+    }
+
+    ROLES {
+        UUID id PK
+        UUID merchant_id FK "NULL for default system templates"
+        VARCHAR name "OWNER, DEVELOPER, FINANCE, VIEWER"
+        VARCHAR description
+    }
+
+    PERMISSIONS {
+        UUID id PK
+        VARCHAR code UK "e.g. orders.read, refunds.create, keys.manage"
+        VARCHAR module "PAYMENTS, SETTLEMENTS, DEVELOPER_TOOLS"
+    }
+
+    ROLE_PERMISSIONS {
+        UUID role_id PK, FK
+        UUID permission_id PK, FK
+    }
+
+    MERCHANT_MEMBERS {
+        UUID id PK
+        UUID merchant_id FK
+        UUID user_id FK
+        UUID role_id FK
+        VARCHAR status "INVITED, ACTIVE, SUSPENDED"
+        TIMESTAMPTZ joined_at
+    }
+
+    ORDERS {
+        UUID id PK
+        VARCHAR order_id UK
+        UUID merchant_id FK
+        BIGINT amount
+        VARCHAR status
+    }
+
+    PAYMENTS {
+        UUID id PK
+        VARCHAR payment_id UK
+        VARCHAR order_id FK
+        UUID merchant_id FK
+        BIGINT amount
+        VARCHAR status
+    }
+
+    ACCOUNTS {
+        UUID id PK
+        VARCHAR name
+        UUID merchant_id FK
+    }
+
+    LEDGER_TRANSACTIONS {
+        UUID id PK
+        VARCHAR source_event
+    }
+
+    LEDGER_ENTRIES {
+        UUID id PK
+        UUID ledger_transaction_id FK
+        UUID account_id FK
+        BIGINT amount
+    }

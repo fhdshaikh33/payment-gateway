@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
-from app.db.base import Base
+from app.core.database import Base
 import app.models  # noqa: F401  # Register all ORM tables with Base.metadata.
 
 config = context.config

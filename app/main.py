@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.router import api_router
-from app.core.config import settings
+from app.core import logger, settings
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Reserve application startup and shutdown hooks."""
+    logger.info("Starting up %s in %s mode", settings.app_name, settings.environment)
     yield
+    logger.info("Shutting down %s", settings.app_name)
 
 
 app = FastAPI(
