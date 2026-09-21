@@ -4,6 +4,8 @@ from datetime import datetime
 from sqlalchemy import DateTime, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.database import Base
+
 
 class BaseMixin:
     """Common primary key and audit timestamps for ORM models."""
@@ -20,3 +22,9 @@ class BaseMixin:
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class BaseModel(Base, BaseMixin):
+    """Abstract base ORM model inheriting from Base and BaseMixin."""
+
+    __abstract__ = True
