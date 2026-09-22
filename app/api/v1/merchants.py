@@ -37,7 +37,10 @@ async def register_merchant(
     Creates a new Merchant entity, primary User account, OWNER role,
     and MerchantMember association.
     """
-    logger.info("Processing merchant registration for business: %s", payload.business_name)
+    logger.info(
+        "Processing merchant registration for business: %s",
+        payload.business_name,
+    )
     result = await MerchantService.register_merchant(session, payload)
     return GenericResponse[MerchantRegisterResponse](
         success=True,
@@ -64,7 +67,10 @@ async def generate_api_key(
     Issues a new key pair for the merchant associated with the authenticated session.
     Automatically deactivates/rotates previous active keys for the specified environment.
     """
-    logger.info("Processing API key generation request for environment: %s", payload.environment)
+    logger.info(
+        "Processing API key generation request for environment: %s",
+        payload.environment,
+    )
     merchant_id = None
     if "merchant_id" in current_user and current_user["merchant_id"]:
         try:

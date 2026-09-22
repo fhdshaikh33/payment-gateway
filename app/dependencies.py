@@ -11,10 +11,15 @@ from collections.abc import AsyncGenerator, Generator
 from typing import Any, Sequence
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
+import hashlib
+
+from app.models.api_key import ApiKey
+from app.models.merchant import Merchant
 
 from app.core.config import settings
 from app.core.database import get_async_db, get_db
@@ -39,6 +44,45 @@ oauth2_scheme = OAuth2PasswordBearer(
     auto_error=False,
 )
 http_bearer = HTTPBearer(auto_error=False)
+http_basic = HTTPBasic(auto_error=False)
+
+
+async def get_merchant_by_api_key(
+    credentials: HTTPBasicCredentials | None = Depends(http_basic),
+    db: AsyncSession = Depends(get_async_db_session),
+) -> Merchant:
+    """
+    Authenticate a merchant using Basic Auth (API Key ID and Secret).
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate API credentials",
+        headers={"WWW-Authenticate": "Basic"},
+    )
+    if not credentials:
+        raise credentials_exception
+
+    key_id = credentials.username
+    key_secret = credentials.password
+    key_secret_hash = hashlib.sha256(key_secret.encode("utf-8")).hexdigest()
+
+    stmt = (
+        select(ApiKey)
+        .options(selectinload(ApiKey.merchant))
+        .where(
+            ApiKey.key_id == key_id,
+            ApiKey.key_secret_hash == key_secret_hash,
+            ApiKey.is_active == True,
+            ApiKey.revoked_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    api_key = result.scalar_one_or_none()
+
+    if not api_key or not api_key.merchant:
+        raise credentials_exception
+
+    return api_key.merchant
 
 
 async def get_current_user(
