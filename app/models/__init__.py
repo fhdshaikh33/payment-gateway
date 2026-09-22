@@ -1,3 +1,4 @@
+from app.models.api_key import ApiKey
 from app.models.base import BaseMixin, BaseModel
 from app.models.merchant import Merchant
 from app.models.merchant_member import MerchantMember
@@ -11,4 +12,6 @@ __all__ = [
     "Merchant",
     "Role",
     "MerchantMember",
+    "ApiKey",
 ]
+

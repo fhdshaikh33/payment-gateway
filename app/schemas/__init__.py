@@ -1,5 +1,10 @@
 """Pydantic request and response models."""
 
+from app.schemas.api_key import (
+    ApiKeyEnvironment,
+    ApiKeyGenerateRequest,
+    ApiKeyGenerateResponse,
+)
 from app.schemas.common import GenericResponse, PaginatedResponse
 from app.schemas.merchant import (
     KycStatus,
@@ -15,4 +20,8 @@ __all__ = [
     "KycStatus",
     "MerchantRegisterRequest",
     "MerchantRegisterResponse",
+    "ApiKeyEnvironment",
+    "ApiKeyGenerateRequest",
+    "ApiKeyGenerateResponse",
 ]
+
