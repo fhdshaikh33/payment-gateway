@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from sqlalchemy import select
@@ -20,6 +21,7 @@ class MerchantRepository:
         """Fetch user by email using async session."""
         result = await session.execute(select(User).where(User.email == email))
         return result.scalars().first()
+
 
     @staticmethod
     def get_user_by_email_sync(
