@@ -63,3 +63,15 @@ class ApiKeyRepository:
         await session.refresh(api_key)
 
         return api_key
+
+    @staticmethod
+    async def get_by_key_id_async(
+        session: AsyncSession, key_id: str
+    ) -> Optional[ApiKey]:
+        """Fetch an active ApiKey by its public key_id."""
+        stmt = select(ApiKey).where(
+            ApiKey.key_id == key_id,
+            ApiKey.is_active.is_(True),
+        )
+        result = await session.execute(stmt)
+        return result.scalars().first()

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Checkout</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="checkout.css">
+</head>
+<body>
+    <div class="checkout-container glass-panel">
+        <div class="header">
+            <div class="logo">SecurePay</div>
+            <div class="amount-display">
+                <span class="currency">₹</span><span id="display-amount">0.00</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="card">Card</button>
+            <button class="tab-btn" data-tab="upi">UPI</button>
+            <button class="tab-btn" data-tab="netbanking">Netbanking</button>
+            <div class="tab-indicator"></div>
+        </div>
+
+        <div class="tab-content-container">
+            <!-- Card Form -->
+            <div class="tab-content active" id="card-form">
+                <div class="input-group">
+                    <label>Card Number</label>
+                    <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19">
+                </div>
+                <div class="row">
+                    <div class="input-group">
+                        <label>Expiry (MM/YY)</label>
+                        <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                    </div>
+                    <div class="input-group">
+                        <label>CVV</label>
+                        <input type="password" id="card-cvv" placeholder="123" maxlength="4">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Cardholder Name</label>
+                    <input type="text" id="card-name" placeholder="John Doe">
+                </div>
+            </div>
+
+            <!-- UPI Form -->
+            <div class="tab-content" id="upi-form">
+                <div class="input-group">
+                    <label>UPI ID</label>
+                    <input type="text" id="upi-id" placeholder="username@upi">
+                </div>
+                <p class="helper-text">A payment request will be sent to your UPI app.</p>
+            </div>
+
+            <!-- Netbanking Form -->
+            <div class="tab-content" id="netbanking-form">
+                <div class="input-group">
+                    <label>Select Bank</label>
+                    <select id="bank-code">
+                        <option value="HDFC">HDFC Bank</option>
+                        <option value="ICICI">ICICI Bank</option>
+                        <option value="SBI">State Bank of India</option>
+                        <option value="AXIS">Axis Bank</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <button id="pay-button" class="btn-primary">
+            <span class="btn-text">Pay Now</span>
+            <span class="loader hidden"></span>
+        </button>
+
+        <!-- Status Overlays -->
+        <div id="status-overlay" class="status-overlay hidden">
+            <div class="status-content">
+                <div class="status-icon" id="status-icon"></div>
+                <h3 id="status-title">Processing...</h3>
+                <p id="status-message">Please wait</p>
+                <!-- For mock 3DS/UPI collect -->
+                <div id="mock-action-area" class="hidden">
+                    <button id="mock-approve-btn" class="btn-success">Approve Mock Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentTab = 'card';
+        let orderData = {
+            order_id: '',
+            key_id: '',
+            amount: 0
+        };
+
+        // Listen for initialization from parent
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'INIT_CHECKOUT') {
+                orderData = event.data.payload;
+                document.getElementById('display-amount').textContent = (orderData.amount / 100).toFixed(2);
+            }
+        });
+
+        // Tab Switching Logic with animations
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+        const indicator = document.querySelector('.tab-indicator');
+
+        function updateIndicator(tabElement) {
+            indicator.style.width = `${tabElement.offsetWidth}px`;
+            indicator.style.left = `${tabElement.offsetLeft}px`;
+        }
+
+        // Init indicator
+        setTimeout(() => updateIndicator(document.querySelector('.tab-btn.active')), 100);
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.getAttribute('data-tab');
+                if (currentTab === target) return;
+                currentTab = target;
+
+                // Update active classes
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                updateIndicator(tab);
+
+                // Animate contents
+                contents.forEach(c => {
+                    c.classList.remove('active');
+                    c.style.opacity = '0';
+                    c.style.transform = 'translateY(10px)';
+                    setTimeout(() => c.style.display = 'none', 300); // Wait for fade out
+                });
+
+                const activeContent = document.getElementById(`${target}-form`);
+                setTimeout(() => {
+                    activeContent.style.display = 'block';
+                    // Trigger reflow
+                    void activeContent.offsetWidth;
+                    activeContent.classList.add('active');
+                    activeContent.style.opacity = '1';
+                    activeContent.style.transform = 'translateY(0)';
+                }, 300);
+            });
+        });
+
+        // Input formatting (simple)
+        document.getElementById('card-number').addEventListener('input', function (e) {
+            this.value = this.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+        });
+
+        // Submit Logic
+        const payBtn = document.getElementById('pay-button');
+        const btnText = document.querySelector('.btn-text');
+        const loader = document.querySelector('.loader');
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusIcon = document.getElementById('status-icon');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const mockActionArea = document.getElementById('mock-action-area');
+
+        payBtn.addEventListener('click', async () => {
+            // Build payload
+            let payload = {
+                order_id: orderData.order_id,
+                key_id: orderData.key_id,
+                method: currentTab.toUpperCase()
+            };
+
+            if (currentTab === 'card') {
+                const exp = document.getElementById('card-expiry').value.split('/');
+                payload.card = {
+                    number: document.getElementById('card-number').value.replace(/\s/g, ''),
+                    exp_month: exp[0] || '',
+                    exp_year: exp[1] || '',
+                    cvv: document.getElementById('card-cvv').value,
+                    name: document.getElementById('card-name').value
+                };
+            } else if (currentTab === 'upi') {
+                payload.upi_id = document.getElementById('upi-id').value;
+            } else if (currentTab === 'netbanking') {
+                payload.bank_code = document.getElementById('bank-code').value;
+            }
+
+            // UI Loading state
+            payBtn.disabled = true;
+            btnText.classList.add('hidden');
+            loader.classList.remove('hidden');
+
+            try {
+                // Generate idempotency key for this attempt
+                const idempotencyKey = 'idem_' + Math.random().toString(36).substr(2, 9);
+                
+                const response = await fetch('/api/v1/payments/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Idempotency-Key': idempotencyKey
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.detail || result.message || 'Payment failed');
+                }
+
+                // Show Action Mock (3DS or UPI Collect)
+                showStatus('Processing...', 'Complete the action to proceed.', 'loading');
+                mockActionArea.classList.remove('hidden');
+
+                // Bind mock approve
+                document.getElementById('mock-approve-btn').onclick = () => {
+                    mockActionArea.classList.add('hidden');
+                    showStatus('Success!', 'Payment completed successfully.', 'success');
+                    // Notify parent window
+                    setTimeout(() => {
+                        window.parent.postMessage({
+                            type: 'PAYMENT_SUCCESS',
+                            payload: result.data
+                        }, '*');
+                    }, 1500);
+                };
+
+            } catch (err) {
+                showStatus('Error', err.message, 'error');
+                setTimeout(() => {
+                    hideStatus();
+                    payBtn.disabled = false;
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                }, 3000);
+            }
+        });
+
+        function showStatus(title, message, type) {
+            statusOverlay.classList.remove('hidden');
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+            
+            statusIcon.className = 'status-icon';
+            if (type === 'loading') {
+                statusIcon.innerHTML = '<div class="spinner"></div>';
+            } else if (type === 'success') {
+                statusIcon.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+                statusIcon.classList.add('success-icon');
+            } else if (type === 'error') {
+                statusIcon.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+                statusIcon.classList.add('error-icon');
+            }
+            
+            // Trigger animation
+            setTimeout(() => statusOverlay.classList.add('visible'), 10);
+        }
+
+        function hideStatus() {
+            statusOverlay.classList.remove('visible');
+            setTimeout(() => statusOverlay.classList.add('hidden'), 300);
+        }
+    </script>
+</body>
+</html>

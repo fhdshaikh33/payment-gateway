@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Merchant Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #111;
+            background: linear-gradient(to bottom right, #333333, #000000); 
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .product-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            animation: cardEnter 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards, float 6s ease-in-out infinite 0.8s;
+        }
+
+        .product-card > * {
+            opacity: 0;
+            animation: contentEnter 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        
+        .product-image { animation-delay: 0.3s; }
+        h1 { animation-delay: 0.4s; }
+        p { animation-delay: 0.5s; }
+        .price { animation-delay: 0.6s; }
+        .btn-buy { animation-delay: 0.7s; }
+
+        @keyframes cardEnter {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+        }
+
+        @keyframes contentEnter {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .coin-wrapper {
+            display: inline-block;
+            animation: spinCoin 3s linear infinite;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes spinCoin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        @keyframes launchCoin {
+            0% { transform: translateY(0) scale(1) rotateY(0deg); opacity: 1; }
+            30% { transform: translateY(20px) scale(0.8) rotateY(180deg); opacity: 1; }
+            100% { transform: translateY(-500px) scale(2) rotateY(1440deg); opacity: 0; }
+        }
+
+        .smoke {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            filter: blur(8px);
+            pointer-events: none;
+            opacity: 0;
+            animation: smokeRise 1s ease-out forwards;
+        }
+
+        @keyframes smokeRise {
+            0% { transform: translate(-50%, 0) scale(0.5); opacity: 0.8; }
+            100% { transform: translate(-50%, 80px) scale(3); opacity: 0; }
+        }
+
+        .sparkle {
+            position: fixed;
+            width: 4px;
+            height: 15px;
+            background: #ffdd44;
+            border-radius: 2px;
+            box-shadow: 0 0 10px #ff7700, 0 0 20px #ff0000;
+            pointer-events: none;
+            animation: sparkFall 0.5s ease-out forwards;
+            z-index: 999;
+        }
+
+        @keyframes sparkFall {
+            0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+            100% { transform: translate(calc(-50% + var(--spark-dx)), var(--spark-dy)) scale(0); opacity: 0; }
+        }
+
+        .product-image {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #666666, #222222);
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            background: linear-gradient(135deg, #ffffff, #888888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0 0 30px 0;
+            line-height: 1.6;
+        }
+
+        .price {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            color: #ffffff;
+        }
+
+        .btn-buy {
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            color: #000000;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            width: 100%;
+        }
+
+        .btn-buy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-buy:active {
+            transform: translateY(1px);
+        }
+
+        /* Success Message styling */
+        #success-msg {
+            display: none;
+            margin-top: 20px;
+            color: #00e676;
+            font-weight: 600;
+            background: rgba(0, 230, 118, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="product-card">
+        <div class="product-image"><span class="coin-wrapper">🪙</span></div>
+        <h1>Pro Subscription</h1>
+        <p>Unlock advanced features, unlimited API calls, and premium support.</p>
+        <div class="price">₹4,999.00</div>
+        <button class="btn-buy" id="checkout-btn">Purchase Now</button>
+        <div id="success-msg">Payment Successful! Thank you.</div>
+    </div>
+
+    <!-- Include the Drop-in SDK -->
+    <script src="/static/checkout.js"></script>
+    <script>
+        function createSmoke(coinElement) {
+            const smoke = document.createElement('div');
+            smoke.classList.add('smoke');
+            
+            const rect = coinElement.getBoundingClientRect();
+            const offsetX = (Math.random() - 0.5) * 40;
+            smoke.style.position = 'fixed';
+            smoke.style.left = `${rect.left + (rect.width / 2) + offsetX}px`;
+            smoke.style.top = `${rect.bottom - 10}px`;
+            
+            document.body.appendChild(smoke);
+            
+            setTimeout(() => {
+                smoke.remove();
+            }, 1000);
+        }
+
+        function createSparkle(coinElement) {
+            const spark = document.createElement('div');
+            spark.classList.add('sparkle');
+            
+            const rect = coinElement.getBoundingClientRect();
+            
+            // Random horizontal spread and vertical drop
+            const dx = (Math.random() - 0.5) * 80; 
+            const dy = Math.random() * 60 + 20; 
+            
+            spark.style.setProperty('--spark-dx', `${dx}px`);
+            spark.style.setProperty('--spark-dy', `${dy}px`);
+            
+            spark.style.left = `${rect.left + (rect.width / 2)}px`;
+            spark.style.top = `${rect.bottom - 5}px`;
+            
+            document.body.appendChild(spark);
+            
+            setTimeout(() => {
+                spark.remove();
+            }, 500);
+        }
+
+        document.getElementById('checkout-btn').addEventListener('click', () => {
+            const coin = document.querySelector('.coin-wrapper');
+            
+            // Trigger the slower launch animation (1.5s)
+            coin.style.animation = 'launchCoin 1.5s cubic-bezier(0.5, 0, 0.2, 1) forwards';
+
+            // Generate smoke and fire sparkles rapidly at the coin's current location
+            let smokeInterval = setInterval(() => {
+                createSmoke(coin);
+                createSparkle(coin);
+                createSparkle(coin);
+            }, 40);
+
+            // Wait for the slower animation to fly off screen (1500ms) before opening modal
+            setTimeout(() => {
+                clearInterval(smokeInterval);
+                
+                const mockOrderId = "order_" + Math.random().toString(36).substr(2, 9);
+                const mockKeyId = "rzp_test_123456789"; 
+                const amountInPaise = 499900; 
+
+                // Open the Checkout Modal
+                window.PaymentGateway.open({
+                    order_id: mockOrderId,
+                    key_id: mockKeyId,
+                    amount: amountInPaise,
+                    onSuccess: function (response) {
+                        console.log("Payment Success!", response);
+                        document.getElementById('checkout-btn').style.display = 'none';
+                        document.getElementById('success-msg').style.display = 'block';
+                    },
+                    onError: function (error) {
+                        console.error("Payment Failed", error);
+                        alert("Payment failed: " + JSON.stringify(error));
+                    }
+                });
+
+                // Reset the coin animation after the modal is fully visible
+                setTimeout(() => {
+                    coin.style.animation = 'spinCoin 3s linear infinite';
+                }, 500);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

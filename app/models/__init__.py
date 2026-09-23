@@ -5,6 +5,7 @@ from app.models.merchant_member import MerchantMember
 from app.models.role import Role
 from app.models.user import User
 from app.models.order import Order
+from app.models.payment import Payment
 
 __all__ = [
     "BaseMixin",
@@ -15,5 +16,6 @@ __all__ = [
     "MerchantMember",
     "ApiKey",
     "Order",
+    "Payment",
 ]
 

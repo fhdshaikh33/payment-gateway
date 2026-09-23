@@ -39,6 +39,19 @@ services:
       retries: 5
     restart: ${RESTART_POLICY:-unless-stopped}
 
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: payment_gateway_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: ${RESTART_POLICY:-unless-stopped}
+
   # FastAPI Application
   web:
     build:
@@ -50,6 +63,7 @@ services:
              uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} ${UVICORN_RELOAD:---reload}"
     environment:
       - PAYMENT_GATEWAY_DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-payment_gateway}
+      - PAYMENT_GATEWAY_REDIS_URL=redis://redis:6379/0
       - DEBUG=${DEBUG:-true}
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       - ENVIRONMENT=${ENVIRONMENT:-development}
@@ -61,6 +75,8 @@ services:
       db:
         condition: service_healthy
       localstack:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: ${RESTART_POLICY:-unless-stopped}
     env_file:

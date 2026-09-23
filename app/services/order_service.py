@@ -1,6 +1,9 @@
 import secrets
 import uuid
 
+from typing import Optional
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order
@@ -29,3 +32,15 @@ async def create_order(
     await db_session.refresh(new_order)                                       
 
     return new_order
+
+
+async def get_order_by_public_id(
+    db_session: AsyncSession, order_id: str, merchant_id: uuid.UUID
+) -> Optional[Order]:
+    """Fetch an order by its public ID and associated merchant ID."""
+    stmt = select(Order).where(
+        Order.order_id == order_id,
+        Order.merchant_id == merchant_id,
+    )
+    result = await db_session.execute(stmt)
+    return result.scalars().first()
