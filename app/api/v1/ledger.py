@@ -9,8 +9,8 @@ from app.core.database import get_async_db
 from app.dependencies import RoleChecker, get_async_db_session, get_current_active_user
 from app.models.merchant_member import MerchantMember
 from app.schemas.common import GenericResponse
-from app.schemas.ledger import LedgerBalanceResponse
-from app.services.ledger_service import get_merchant_wallet_balance
+from app.schemas.ledger import LedgerBalanceResponse, LedgerTransactionResponse
+from app.services.ledger_service import get_merchant_wallet_balance, get_ledger_transaction_by_reference
 from sqlalchemy import select
 
 router = APIRouter()
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 # Only users with MERCHANT or ACCOUNTANT roles can access this endpoint
 allow_merchant_or_accountant = RoleChecker(["MERCHANT", "ACCOUNTANT"])
+allow_platform_admin = RoleChecker(["PLATFORM_ADMIN"])
+
 
 @router.get("/accounts/balance", response_model=GenericResponse[LedgerBalanceResponse])
 async def fetch_wallet_balance_endpoint(
@@ -45,4 +47,22 @@ async def fetch_wallet_balance_endpoint(
         success=True,
         message="Wallet balance retrieved successfully",
         data=balance_response
+    )
+
+
+@router.get("/transactions/{reference_id}", response_model=GenericResponse[LedgerTransactionResponse])
+async def fetch_ledger_transaction_endpoint(
+    reference_id: str,
+    current_user: dict[str, Any] = Depends(allow_platform_admin),
+    db_session: AsyncSession = Depends(get_async_db_session),
+) -> GenericResponse[LedgerTransactionResponse]:
+    """
+    Inspects balanced accounting legs for any payment or refund ID.
+    Access: Platform Admin
+    """
+    transaction_response = await get_ledger_transaction_by_reference(db_session, reference_id)
+    return GenericResponse(
+        success=True,
+        message="Ledger transaction retrieved successfully",
+        data=transaction_response
     )

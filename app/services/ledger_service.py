@@ -6,9 +6,15 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException
+
 from app.core.redis import redis_client
-from app.models.ledger import Account, LedgerEntry
-from app.schemas.ledger import LedgerBalanceResponse
+from app.models.ledger import Account, LedgerEntry, LedgerTransaction
+from app.schemas.ledger import (
+    LedgerBalanceResponse,
+    LedgerLegSchema,
+    LedgerTransactionResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +84,53 @@ async def get_merchant_wallet_balance(
         logger.warning(f"Redis connection failed, could not cache balance: {e}")
 
     return response
+
+
+async def get_ledger_transaction_by_reference(
+    db_session: AsyncSession, reference_id: str
+) -> LedgerTransactionResponse:
+    """
+    Retrieve the ledger transaction and its legs by the given reference ID.
+    """
+    # 1. Fetch LedgerTransaction by reference_id
+    transaction_stmt = select(LedgerTransaction).where(
+        LedgerTransaction.reference_id == reference_id
+    )
+    transaction_result = await db_session.execute(transaction_stmt)
+    transaction = transaction_result.scalars().first()
+
+    if not transaction:
+        logger.info(f"Ledger transaction with reference_id {reference_id} not found.")
+        raise HTTPException(status_code=404, detail="Ledger transaction not found")
+
+    # 2. Fetch LedgerEntries + Accounts
+    entries_stmt = select(LedgerEntry, Account).join(
+        Account, LedgerEntry.account_id == Account.id
+    ).where(
+        LedgerEntry.ledger_transaction_id == transaction.id
+    )
+    entries_result = await db_session.execute(entries_stmt)
+    rows = entries_result.all()
+
+    legs = []
+    total_balance = 0
+
+    for entry, account in rows:
+        amount = entry.amount
+        total_balance += amount
+
+        direction = "CREDIT" if amount >= 0 else "DEBIT"
+        
+        legs.append(LedgerLegSchema(
+            account=account.name,
+            direction=direction,
+            amount=abs(amount)
+        ))
+
+    return LedgerTransactionResponse(
+        transaction_id=transaction.id,
+        source_event=transaction.source_event,
+        reference_id=transaction.reference_id,
+        legs=legs,
+        is_balanced=(total_balance == 0)
+    )
