@@ -8,6 +8,7 @@ from app.models.order import Order
 from app.models.payment import Payment
 from app.models.refund import Refund
 from app.models.ledger import Account, LedgerTransaction, LedgerEntry
+from app.models.webhook import WebhookEndpoint, WebhookDelivery
 
 __all__ = [
     "BaseMixin",
@@ -23,5 +24,7 @@ __all__ = [
     "Account",
     "LedgerTransaction",
     "LedgerEntry",
+    "WebhookEndpoint",
+    "WebhookDelivery",
 ]
 

@@ -1,8 +1,10 @@
+import asyncio
 import hashlib
 import hmac
 import logging
 import secrets
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -20,6 +22,7 @@ from app.schemas.payment import (
     VerifyPaymentResponse,
 )
 from app.services.order_service import get_order_by_public_id
+from app.services.webhook_service import dispatch_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +201,24 @@ async def verify_payment_signature(
             f"Payment {request_data.payment_id} verified and captured; "
             f"Order {request_data.order_id} marked as PAID."
         )
+        
+        # Fire webhook (non-blocking)
+        asyncio.create_task(
+            dispatch_webhook(
+                db_session, 
+                merchant_id, 
+                "payment.captured", 
+                {
+                    "payment_id": payment.payment_id,
+                    "order_id": order.order_id,
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                    "status": "CAPTURED",
+                    "captured_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        )
+
     except Exception as e:
         await db_session.rollback()
         logger.error(f"Error updating statuses after verification: {e}")

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 import uuid
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.payment import Payment
 from app.models.refund import Refund
 from app.schemas.refund import RefundCreateRequest, RefundResponse
+from app.services.webhook_service import dispatch_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,21 @@ async def create_refund(
         # TODO: Insert compensating double-entry debit to Merchant Wallet and credit to Escrow Asset
         logger.info(
             f"Ledger Stub: Debited Merchant Wallet, Credited Escrow Asset for {request_data.amount} {payment.currency}"
+        )
+        
+        # 7. Fire webhook (non-blocking)
+        asyncio.create_task(
+            dispatch_webhook(
+                db_session, 
+                merchant_id, 
+                "refund.created", 
+                {
+                    "refund_id": new_refund.refund_id,
+                    "payment_id": new_refund.payment_id,
+                    "amount": new_refund.amount,
+                    "status": new_refund.status,
+                }
+            )
         )
 
     except Exception as e:
