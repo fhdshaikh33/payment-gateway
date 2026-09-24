@@ -5,6 +5,7 @@ from app.api.v1.merchants import router as merchants_router
 from app.api.v1.orders import router as orders_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.switch import router as switch_router
+from app.api.v1.ledger import router as ledger_router
 
 api_router = APIRouter()
 api_router.include_router(
@@ -21,4 +22,7 @@ api_router.include_router(
 )
 api_router.include_router(
     switch_router, prefix="/switch", tags=["Bank Switch"]
+)
+api_router.include_router(
+    ledger_router, prefix="/ledger", tags=["Ledger"]
 )

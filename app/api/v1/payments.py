@@ -18,14 +18,21 @@ from app.schemas.payment import (
     VerifyPaymentRequest,
     VerifyPaymentResponse,
 )
-from app.services.payment_service import process_payment, verify_payment_signature
+from app.schemas.refund import RefundCreateRequest, RefundResponse
+from app.services.payment_service import (
+    process_payment,
+    verify_payment_signature,
+)
+from app.services.refund_service import create_refund
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 http_basic = HTTPBasic(auto_error=False)
 
 
-@router.post("/process", response_model=GenericResponse[ProcessPaymentResponse])
+@router.post(
+    "/process", response_model=GenericResponse[ProcessPaymentResponse]
+)
 async def process_payment_endpoint(
     request: ProcessPaymentRequest,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
@@ -45,10 +52,12 @@ async def process_payment_endpoint(
             return GenericResponse(
                 success=True,
                 message="Payment already processed (idempotent response)",
-                data=ProcessPaymentResponse(**response_data)
+                data=ProcessPaymentResponse(**response_data),
             )
     except Exception as e:
-        logger.warning(f"Redis connection failed, bypassing idempotency check: {e}")
+        logger.warning(
+            f"Redis connection failed, bypassing idempotency check: {e}"
+        )
 
     # Process payment normally
     payment_response = await process_payment(db_session, request)
@@ -56,17 +65,17 @@ async def process_payment_endpoint(
     try:
         # Cache the successful response for 24 hours (86400 seconds)
         await redis_client.setex(
-            redis_key,
-            86400,
-            payment_response.model_dump_json()
+            redis_key, 86400, payment_response.model_dump_json()
         )
     except Exception as e:
-        logger.warning(f"Redis connection failed, could not cache response: {e}")
+        logger.warning(
+            f"Redis connection failed, could not cache response: {e}"
+        )
 
     return GenericResponse(
         success=True,
         message="Payment processed successfully",
-        data=payment_response
+        data=payment_response,
     )
 
 
@@ -105,4 +114,59 @@ async def verify_payment_endpoint(
         success=True,
         message=result.message,
         data=result,
+    )
+
+
+@router.post(
+    "/{payment_id}/refunds",
+    response_model=GenericResponse[RefundResponse],
+    status_code=201,
+)
+async def initiate_refund_endpoint(
+    payment_id: str,
+    request: RefundCreateRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    merchant: Merchant = Depends(get_merchant_by_api_key),
+    db_session: AsyncSession = Depends(get_async_db_session),
+) -> GenericResponse[RefundResponse]:
+    """
+    Initiate a full or partial refund for a specific payment.
+    """
+    redis_key = f"idempotency:refund:{idempotency_key}"
+
+    try:
+        # Check if we already processed this idempotency key
+        cached_response = await redis_client.get(redis_key)
+        if cached_response:
+            logger.info(f"Idempotency key hit for refund {idempotency_key}")
+            response_data = json.loads(cached_response)
+            return GenericResponse(
+                success=True,
+                message="Refund already processed (idempotent response)",
+                data=RefundResponse(**response_data),
+            )
+    except Exception as e:
+        logger.warning(
+            f"Redis connection failed, bypassing idempotency check: {e}"
+        )
+
+    # Process refund normally
+    refund_response = await create_refund(
+        db_session, merchant.id, payment_id, request
+    )
+
+    try:
+        # Cache the successful response for 24 hours
+        await redis_client.setex(
+            redis_key, 86400, refund_response.model_dump_json()
+        )
+    except Exception as e:
+        logger.warning(
+            f"Redis connection failed, could not cache response: {e}"
+        )
+
+    return GenericResponse(
+        success=True,
+        message="Refund initiated successfully",
+        data=refund_response,
     )
