@@ -1,11 +1,14 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
 
 
 class ApiKey(BaseModel):
@@ -32,3 +35,7 @@ class ApiKey(BaseModel):
     revoked_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Relationship
+    merchant: Mapped["Merchant"] = relationship("Merchant", lazy="noload")
+

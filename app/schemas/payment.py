@@ -34,3 +34,23 @@ class ProcessPaymentResponse(BaseModel):
     status: str
     action: Optional[str] = None
     challenge_url: Optional[str] = None
+
+
+class VerifyPaymentRequest(BaseModel):
+    """Request payload for verifying a payment signature."""
+
+    order_id: str = Field(..., min_length=1, description="Public order ID")
+    payment_id: str = Field(..., min_length=1, description="Public payment ID")
+    signature: str = Field(
+        ...,
+        min_length=64,
+        max_length=64,
+        description="HMAC-SHA256 hex digest of 'order_id|payment_id'",
+    )
+
+
+class VerifyPaymentResponse(BaseModel):
+    """Response payload for payment signature verification."""
+
+    verified: bool
+    message: str

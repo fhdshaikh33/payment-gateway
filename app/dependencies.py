@@ -12,18 +12,19 @@ from typing import Any, Sequence
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials
+import hmac
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 import hashlib
 
+from app.core.security import decode_jwt, decrypt_api_secret
 from app.models.api_key import ApiKey
 from app.models.merchant import Merchant
 
 from app.core.config import settings
 from app.core.database import get_async_db, get_db
-from app.core.security import decode_jwt
 
 
 # --- Database session dependencies ---
@@ -53,6 +54,9 @@ async def get_merchant_by_api_key(
 ) -> Merchant:
     """
     Authenticate a merchant using Basic Auth (API Key ID and Secret).
+
+    The key_secret is verified by decrypting the stored Fernet ciphertext
+    and performing a constant-time comparison to prevent timing attacks.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,14 +68,12 @@ async def get_merchant_by_api_key(
 
     key_id = credentials.username
     key_secret = credentials.password
-    key_secret_hash = hashlib.sha256(key_secret.encode("utf-8")).hexdigest()
 
     stmt = (
         select(ApiKey)
         .options(selectinload(ApiKey.merchant))
         .where(
             ApiKey.key_id == key_id,
-            ApiKey.key_secret_hash == key_secret_hash,
             ApiKey.is_active == True,
             ApiKey.revoked_at.is_(None),
         )
@@ -80,6 +82,15 @@ async def get_merchant_by_api_key(
     api_key = result.scalar_one_or_none()
 
     if not api_key or not api_key.merchant:
+        raise credentials_exception
+
+    # Decrypt stored secret and compare using constant-time digest
+    try:
+        stored_secret = decrypt_api_secret(api_key.key_secret_encrypted)
+    except Exception:
+        raise credentials_exception
+
+    if not hmac.compare_digest(stored_secret, key_secret):
         raise credentials_exception
 
     return api_key.merchant
