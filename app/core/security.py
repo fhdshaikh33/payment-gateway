@@ -5,6 +5,7 @@ import secrets
 from typing import Any
 
 import jwt
+from cryptography.fernet import Fernet
 
 from app.core.config import settings
 
@@ -32,17 +33,29 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+def encrypt_api_secret(plaintext: str) -> str:
+    """Encrypt the API secret using the master encryption key."""
+    fernet = Fernet(settings.encryption_master_key.encode())
+    return fernet.encrypt(plaintext.encode()).decode()
+
+
+def decrypt_api_secret(ciphertext: str) -> str:
+    """Decrypt the API secret using the master encryption key."""
+    fernet = Fernet(settings.encryption_master_key.encode())
+    return fernet.decrypt(ciphertext.encode()).decode()
+
+
 def generate_api_key_pair(environment: str) -> tuple[str, str, str]:
     """
-    Generate key_id, plaintext key_secret, and key_secret_hash.
+    Generate key_id, plaintext key_secret, and key_secret_encrypted.
 
     Prefixes key_id with rzp_test_ or rzp_live_ based on environment.
     """
     env_prefix = "rzp_test_" if environment.upper() == "TEST" else "rzp_live_"
     key_id = f"{env_prefix}{secrets.token_hex(5)}"
     key_secret = f"sec_{secrets.token_hex(10)}"
-    key_secret_hash = hashlib.sha256(key_secret.encode("utf-8")).hexdigest()
-    return key_id, key_secret, key_secret_hash
+    key_secret_encrypted = encrypt_api_secret(key_secret)
+    return key_id, key_secret, key_secret_encrypted
 
 
 def create_access_token(

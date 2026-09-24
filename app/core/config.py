@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # Symmetric Encryption Master Key (32-byte url-safe base64-encoded)
+    encryption_master_key: str = "xOqjS-O-5eI00BvX8eXw9B8HZb-vH1E9P_M4nU0oR3g="
+
     # Redis Settings
     redis_url: str = "redis://localhost:6379/0"
 

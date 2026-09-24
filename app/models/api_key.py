@@ -22,7 +22,7 @@ class ApiKey(BaseModel):
     key_id: Mapped[str] = mapped_column(
         String(100), unique=True, index=True, nullable=False
     )
-    key_secret_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_secret_encrypted: Mapped[str] = mapped_column(String(255), nullable=False)
     environment: Mapped[str] = mapped_column(
         String(20), nullable=False
     )  # TEST or LIVE

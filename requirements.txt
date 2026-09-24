@@ -9,3 +9,4 @@ email-validator>=2.0.0
 aiosqlite>=0.20.0
 pyjwt>=2.0.0
 redis>=5.0.0
+cryptography>=42.0.0

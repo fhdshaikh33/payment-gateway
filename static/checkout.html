@@ -164,6 +164,31 @@
         const statusMessage = document.getElementById('status-message');
         const mockActionArea = document.getElementById('mock-action-area');
 
+        function createSmoke(coinElement) {
+            const smoke = document.createElement('div');
+            smoke.classList.add('smoke');
+            const rect = coinElement.getBoundingClientRect();
+            const offsetX = (Math.random() - 0.5) * 40;
+            smoke.style.left = `${rect.left + (rect.width / 2) + offsetX}px`;
+            smoke.style.top = `${rect.bottom - 10}px`;
+            document.body.appendChild(smoke);
+            setTimeout(() => smoke.remove(), 1000);
+        }
+
+        function createSparkle(coinElement) {
+            const spark = document.createElement('div');
+            spark.classList.add('sparkle');
+            const rect = coinElement.getBoundingClientRect();
+            const dx = (Math.random() - 0.5) * 80; 
+            const dy = Math.random() * 60 + 20; 
+            spark.style.setProperty('--spark-dx', `${dx}px`);
+            spark.style.setProperty('--spark-dy', `${dy}px`);
+            spark.style.left = `${rect.left + (rect.width / 2)}px`;
+            spark.style.top = `${rect.bottom - 5}px`;
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 500);
+        }
+
         payBtn.addEventListener('click', async () => {
             // Build payload
             let payload = {
@@ -192,11 +217,22 @@
             btnText.classList.add('hidden');
             loader.classList.remove('hidden');
 
+            // Show initial processing UI with coin
+            showStatus('Processing...', 'Authenticating payment...', 'launch');
+            const coin = document.querySelector('.coin-wrapper');
+            coin.style.animation = 'launchCoin 1.5s cubic-bezier(0.5, 0, 0.2, 1) forwards';
+            
+            let smokeInterval = setInterval(() => {
+                createSmoke(coin);
+                createSparkle(coin);
+                createSparkle(coin);
+            }, 40);
+
             try {
-                // Generate idempotency key for this attempt
                 const idempotencyKey = 'idem_' + Math.random().toString(36).substr(2, 9);
                 
-                const response = await fetch('/api/v1/payments/process', {
+                // Start fetch but don't wait for it yet
+                const fetchPromise = fetch('/api/v1/payments/process', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -205,36 +241,44 @@
                     body: JSON.stringify(payload)
                 });
 
-                const result = await response.json();
+                // Wait for the 1.5s launch animation to complete before showing the next screen
+                setTimeout(async () => {
+                    clearInterval(smokeInterval);
+                    try {
+                        const response = await fetchPromise;
+                        const result = await response.json();
 
-                if (!response.ok || !result.success) {
-                    throw new Error(result.detail || result.message || 'Payment failed');
-                }
+                        if (!response.ok || !result.success) {
+                            throw new Error(result.detail || result.message || 'Payment failed');
+                        }
 
-                // Show Action Mock (3DS or UPI Collect)
-                showStatus('Processing...', 'Complete the action to proceed.', 'loading');
-                mockActionArea.classList.remove('hidden');
+                        // Show Action Mock (3DS or UPI Collect)
+                        showStatus('Action Required', 'Complete the action to proceed.', 'action');
+                        mockActionArea.classList.remove('hidden');
 
-                // Bind mock approve
-                document.getElementById('mock-approve-btn').onclick = () => {
-                    mockActionArea.classList.add('hidden');
-                    showStatus('Success!', 'Payment completed successfully.', 'success');
-                    // Notify parent window
-                    setTimeout(() => {
-                        window.parent.postMessage({
-                            type: 'PAYMENT_SUCCESS',
-                            payload: result.data
-                        }, '*');
-                    }, 1500);
-                };
+                        document.getElementById('mock-approve-btn').onclick = () => {
+                            mockActionArea.classList.add('hidden');
+                            showStatus('Success!', 'Payment completed successfully.', 'success');
+                            setTimeout(() => {
+                                window.parent.postMessage({
+                                    type: 'PAYMENT_SUCCESS',
+                                    payload: result.data
+                                }, '*');
+                            }, 1500);
+                        };
+                    } catch (err) {
+                        showStatus('Error', err.message, 'error');
+                        setTimeout(() => {
+                            hideStatus();
+                        }, 3000);
+                    }
+                }, 1500);
 
             } catch (err) {
+                clearInterval(smokeInterval);
                 showStatus('Error', err.message, 'error');
                 setTimeout(() => {
                     hideStatus();
-                    payBtn.disabled = false;
-                    btnText.classList.remove('hidden');
-                    loader.classList.add('hidden');
                 }, 3000);
             }
         });
@@ -245,7 +289,9 @@
             statusMessage.textContent = message;
             
             statusIcon.className = 'status-icon';
-            if (type === 'loading') {
+            if (type === 'launch') {
+                statusIcon.innerHTML = '<span class="coin-wrapper">🪙</span>';
+            } else if (type === 'loading' || type === 'action') {
                 statusIcon.innerHTML = '<div class="spinner"></div>';
             } else if (type === 'success') {
                 statusIcon.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';

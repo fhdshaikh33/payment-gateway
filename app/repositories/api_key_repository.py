@@ -30,7 +30,7 @@ class ApiKeyRepository:
         merchant_id: uuid.UUID,
         environment: str,
         key_id: str,
-        key_secret_hash: str,
+        key_secret_encrypted: str,
     ) -> ApiKey:
         """
         Deactivates existing active API keys for the specified environment and merchant,
@@ -54,7 +54,7 @@ class ApiKeyRepository:
         api_key = ApiKey(
             merchant_id=merchant_id,
             key_id=key_id,
-            key_secret_hash=key_secret_hash,
+            key_secret_encrypted=key_secret_encrypted,
             environment=environment,
             is_active=True,
         )
