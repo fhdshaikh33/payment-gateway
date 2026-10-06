@@ -11,7 +11,9 @@ class Payment(BaseModel):
 
     __tablename__ = "payments"
 
-    payment_id: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    payment_id: Mapped[str] = mapped_column(
+        String(50), unique=True, index=True, nullable=False
+    )
     order_id: Mapped[str] = mapped_column(
         String(50),
         ForeignKey("orders.order_id", ondelete="CASCADE"),

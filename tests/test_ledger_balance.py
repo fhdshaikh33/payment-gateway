@@ -132,8 +132,8 @@ async def test_aggregated_balance(async_test_session, merchant_and_user_token):
     async_test_session.add(account)
     await async_test_session.commit()
     
-    txn1 = LedgerTransaction(source_event="PAYMENT_CAPTURED")
-    txn2 = LedgerTransaction(source_event="REFUND_PROCESSED")
+    txn1 = LedgerTransaction(reference_id=str(uuid.uuid4()), source_event="PAYMENT_CAPTURED")
+    txn2 = LedgerTransaction(reference_id=str(uuid.uuid4()), source_event="REFUND_PROCESSED")
     async_test_session.add_all([txn1, txn2])
     await async_test_session.commit()
     

@@ -8,21 +8,22 @@ server.
 """
 
 from sqlalchemy import JSON, event
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from app.core.database import Base
 
 
-def _remap_jsonb_to_json(target, connection, **kw):
+def _remap_pg_types_for_sqlite(target, connection, **kw):
     """
-    Replace JSONB column types with JSON so SQLite can create the schema.
+    Replace JSONB and ARRAY column types with JSON so SQLite can create the schema.
     Called via SQLAlchemy's 'before_create' metadata event.
     """
     for table in Base.metadata.tables.values():
         for col in table.columns:
-            if isinstance(col.type, JSONB):
+            if isinstance(col.type, (JSONB, ARRAY)):
                 col.type = JSON()
 
 
 # Register once at the session level; this fires before any create_all call.
-event.listen(Base.metadata, "before_create", _remap_jsonb_to_json)
+event.listen(Base.metadata, "before_create", _remap_pg_types_for_sqlite)
+
