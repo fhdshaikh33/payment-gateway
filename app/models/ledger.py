@@ -10,7 +10,6 @@ class Account(BaseModel):
 
     __tablename__ = "accounts"
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     merchant_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
@@ -25,7 +24,6 @@ class LedgerTransaction(BaseModel):
 
     __tablename__ = "ledger_transactions"
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     reference_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     source_event: Mapped[str] = mapped_column(String(100), nullable=False)
 
@@ -35,7 +33,6 @@ class LedgerEntry(BaseModel):
 
     __tablename__ = "ledger_entries"
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     ledger_transaction_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("ledger_transactions.id", ondelete="CASCADE"),
